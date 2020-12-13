@@ -1,0 +1,66 @@
+    def raw_data_to_csv(DataSet, MortalityRate):
+        import numpy
+        import numpy as np
+        import pandas as pd
+
+        df = pd.read_csv(DataSet)
+        df_labels = pd.read_csv(MortalityRate)[['patientunitstayid','actualicumortality']]
+        unique_labs = pd.unique(df['labname'])
+        unique_patients = pd.unique(df['patientunitstayid'])
+        unique_labels = pd.unique(df_labels['patientunitstayid'])
+        #148532 unique patients in labels (none repeating)
+
+        result = df.loc[:, ['patientunitstayid','labname', 'labresult']] 
+        test_frame = pd.DataFrame(index = df_labels['patientunitstayid'], columns=(unique_labs) )
+
+        index = test_frame.index
+        number_of_rows = len(index)
+
+        columns = test_frame.columns
+        number_of_columns = len(columns)
+
+        i = 0 # Row count
+        j = 0 # Column count
+
+        #Reshape the data
+
+        reshape = result.pivot_table(index = 'patientunitstayid', columns ='labname', values = 'labresult').reset_index()
+
+        difference = (set(reshape['patientunitstayid']).difference(df_labels['patientunitstayid'])) 
+
+        differencelength = len(difference)
+
+        differencelist = list(difference)
+
+        #df_filtered = df[df['patientunitstayid'] == value]
+
+        #reshape = reshape.loc[reshape['patientunitstayid'].isin(unique_patients)]
+
+        df_filtered = reshape.loc[reshape['patientunitstayid'].isin(df_labels['patientunitstayid'])]
+
+        unique_filtered = pd.unique(df_filtered['patientunitstayid'])
+
+        array = df_filtered.to_numpy();
+
+        patient_difference = (set(unique_labels).difference(unique_filtered))
+
+        patient_diff_df = pd.DataFrame(patient_difference)
+
+        #drop difference values from df_labels
+
+        new_labels = df_labels.loc[df_labels['patientunitstayid'].isin(df_filtered['patientunitstayid'])]
+
+        new_labels = new_labels.set_index('patientunitstayid')
+        new_labels = new_labels.reindex(index = df_filtered['patientunitstayid'])
+        new_labels = new_labels.reset_index()
+
+        mortality = new_labels['actualicumortality'] = new_labels['actualicumortality'].replace(['ALIVE', 'EXPIRED'],['0', '1'])
+        mortality = mortality.astype(np.float)
+
+        mortality_array = np.array(mortality.values.tolist())    
+
+        X = numpy.savetxt("DataArray.csv", array, delimiter = ",")
+        y = numpy.savetxt("MortalityArray.csv", mortality_array, delimiter = ",")
+        return (X, y)
+
+    raw_data_to_csv("lab.csv", 'nosepsispf1.csv')
